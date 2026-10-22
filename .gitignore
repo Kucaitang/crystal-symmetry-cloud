@@ -1,0 +1,11 @@
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+
+# 本地运行时产物
+*.log
+node_modules/
+.venv/
+__pycache__/

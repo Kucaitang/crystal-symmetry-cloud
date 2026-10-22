@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>晶体对称性点云 · Symmetry Orbit Cloud</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <aside id="panel">
+    <header class="brand">
+      <div class="logo">◈</div>
+      <div class="brand-text">
+        <h1>晶体对称性点云</h1>
+        <p>SYMMETRY ORBIT CLOUD</p>
+      </div>
+    </header>
+
+    <section>
+      <h2>晶胞参数</h2>
+      <div class="chips" id="presets">
+        <button class="chip" data-system="triclinic">三斜</button>
+        <button class="chip" data-system="monoclinic">单斜</button>
+        <button class="chip" data-system="orthorhombic">正交</button>
+        <button class="chip" data-system="tetragonal">四方</button>
+        <button class="chip" data-system="trigonal">三方</button>
+        <button class="chip" data-system="hexagonal">六方</button>
+        <button class="chip" data-system="cubic">立方</button>
+      </div>
+      <div class="cell-grid">
+        <label>a / Å<input id="cell-a" type="number" step="0.01" min="0.1" value="4.5"></label>
+        <label>b / Å<input id="cell-b" type="number" step="0.01" min="0.1" value="4.5"></label>
+        <label>c / Å<input id="cell-c" type="number" step="0.01" min="0.1" value="4.5"></label>
+        <label>α / °<input id="cell-alpha" type="number" step="0.5" min="1" max="179" value="90"></label>
+        <label>β / °<input id="cell-beta" type="number" step="0.5" min="1" max="179" value="90"></label>
+        <label>γ / °<input id="cell-gamma" type="number" step="0.5" min="1" max="179" value="90"></label>
+      </div>
+    </section>
+
+    <section>
+      <h2>对称性</h2>
+      <div class="mode-toggle" id="sym-mode">
+        <button class="mode-btn active" data-mode="point">点群</button>
+        <button class="mode-btn" data-mode="space">空间群</button>
+      </div>
+      <label class="field" id="pg-field">点群
+        <select id="pg"></select>
+      </label>
+      <label class="field" id="centering-field">点阵带心
+        <select id="centering">
+          <option value="P">P · 简单</option>
+          <option value="A">A · A 底心</option>
+          <option value="B">B · B 底心</option>
+          <option value="C">C · C 底心</option>
+          <option value="I">I · 体心</option>
+          <option value="F">F · 面心</option>
+          <option value="R">R · 菱面体带心</option>
+        </select>
+      </label>
+      <label class="field" id="sg-field" hidden>空间群（H–M 短符号）
+        <select id="sg"></select>
+      </label>
+      <label class="field" id="origin-field" hidden>原点选择
+        <select id="origin"></select>
+      </label>
+      <div class="hint-line" id="sg-hint" hidden>空间群采用 ITA 标准设置（单斜唯一轴 b、三方/六方用六方轴）；24 个双原点选择的群可切换 origin choice。</div>
+      <div class="btn-row">
+        <button class="btn" id="btn-lowest">最低对称 · P1</button>
+        <button class="btn" id="btn-maxsym">点阵全对称</button>
+      </div>
+      <div class="status" id="sym-status"></div>
+    </section>
+
+    <section>
+      <h2>点云</h2>
+      <label class="field">采样方式
+        <select id="sample">
+          <option value="grid">晶胞内均匀网格</option>
+          <option value="random">晶胞内随机点</option>
+          <option value="custom">自定义分数坐标（展开轨道）</option>
+        </select>
+      </label>
+      <label class="field slider-field" id="res-field">密度
+        <span class="value" id="res-value">20³</span>
+        <input id="res" type="range" min="6" max="36" step="1" value="20">
+      </label>
+      <label class="field" id="custom-field" hidden>种子点（每行 x y z）
+        <textarea id="custom" rows="4" spellcheck="false">0.25 0.25 0.25
+0.12 0.34 0.5
+0.05 0.5 0.5</textarea>
+      </label>
+      <div class="hint-line" id="sample-hint"></div>
+    </section>
+
+    <section>
+      <h2>着色</h2>
+      <label class="field">颜色模式
+        <select id="color">
+          <option value="canon">基本域三维色码（同色 = 同轨道）</option>
+          <option value="orbit">轨道离散色（每轨道一色）</option>
+          <option value="pos">按坐标三维色码（不做对称化）</option>
+        </select>
+      </label>
+      <div class="hint-line">颜色由轨道代表点的三维坐标连续编码：同色 ⇔ 对称等价；代表点相距越远、颜色差越大。单击任意点可高亮它的全部等价点。</div>
+      <label class="field slider-field">点大小
+        <span class="value" id="psize-value">1.00</span>
+        <input id="psize" type="range" min="0.3" max="2.4" step="0.05" value="1">
+      </label>
+      <label class="field slider-field">不透明度
+        <span class="value" id="alpha-value">1.00</span>
+        <input id="alpha" type="range" min="0.2" max="1" step="0.02" value="1">
+      </label>
+      <label class="field">渲染风格
+        <select id="blend">
+          <option value="solid">实心点云</option>
+          <option value="glow">加法发光</option>
+        </select>
+      </label>
+    </section>
+
+    <section>
+      <h2>显示</h2>
+      <div class="checks">
+        <label class="check"><input id="autorot" type="checkbox"><span>自动旋转</span></label>
+        <label class="check"><input id="neighbors" type="checkbox"><span>邻胞线框</span></label>
+        <label class="check"><input id="symaxes" type="checkbox"><span>对称轴</span></label>
+        <label class="check"><input id="mirrors" type="checkbox"><span>镜面</span></label>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btn-reset">重置视角</button>
+        <button class="btn" id="btn-png">导出 PNG</button>
+      </div>
+    </section>
+
+    <section id="info-section">
+      <h2>统计</h2>
+      <dl class="stats">
+        <dt>点群</dt><dd id="stat-group">—</dd>
+        <dt>空间群</dt><dd id="stat-sg">—</dd>
+        <dt>晶系</dt><dd id="stat-system">—</dd>
+        <dt>对称操作</dt><dd id="stat-ops">—</dd>
+        <dt>晶格最高对称</dt><dd id="stat-holo">—</dd>
+        <dt>采样点</dt><dd id="stat-points">—</dd>
+        <dt>不同轨道</dt><dd id="stat-orbits">—</dd>
+        <dt>平均轨道大小</dt><dd id="stat-avg">—</dd>
+      </dl>
+      <div id="elements" class="elements"></div>
+      <div id="warnings" class="warnings"></div>
+    </section>
+
+    <footer class="foot">全部计算在浏览器本地完成 · 无外部依赖</footer>
+  </aside>
+
+  <main id="stage">
+    <canvas id="gl"></canvas>
+    <div id="labels"></div>
+    <div id="hud"></div>
+    <div id="selection"></div>
+    <div id="hint">拖拽旋转 · 滚轮缩放 · 单击高亮等价点 · 双击复位</div>
+  </main>
+</div>
+
+<script src="symmetry.js"></script>
+<script src="color.js"></script>
+<script src="spacegroups.js"></script>
+<script src="render.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
