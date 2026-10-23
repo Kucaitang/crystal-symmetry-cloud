@@ -39,6 +39,8 @@
 
 ![空间群模式（Pnma）](shots/12-spacegroup-pnma.png)
 
+![六方 6 点群：点击后高亮 6 个等效点](shots/14-hex6-highlight.png)
+
 ---
 
 ## 功能一览
@@ -211,7 +213,7 @@ node tests/test-color.mjs
 # 空间群数据：20 项（230 群操作数/闭包/度规、符号别名、Wyckoff 多重度、原点选择）
 node tests/test-spacegroups.mjs
 
-# 真实浏览器交互/渲染自检（需要本机 Edge，路径见脚本顶部）：51 项
+# 真实浏览器交互/渲染自检（需要本机 Edge，路径见脚本顶部）：52 项
 node tests/cdp-check.mjs
 ```
 

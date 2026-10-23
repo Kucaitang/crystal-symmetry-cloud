@@ -323,6 +323,7 @@ async function main() {
       await sleep(500);
       const hexSel = await ev("document.getElementById('selection').textContent");
       check('六方 6 点群：点击后高亮 6 个等效点', /轨道大小 6/.test(hexSel), hexSel);
+      await screenshot('14-hex6-highlight.png');
       await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
       await sleep(200);

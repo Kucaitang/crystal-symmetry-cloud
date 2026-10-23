@@ -1241,7 +1241,7 @@
       ]);
       if (!pr || !pr.visible) return null;
       var rect = canvas.getBoundingClientRect();
-      return { x: rect.left + pr.x, y: rect.top + pr.y };
+      return { x: rect.left + pr.x, y: rect.top + pr.y, visible: true };
     },
     /** 找一个靠近画面中心、可见且轨道大小 > 1 的采样点（测试用） */
     pickCenterPoint: function () {
