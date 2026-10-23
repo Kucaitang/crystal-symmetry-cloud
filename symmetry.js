@@ -690,21 +690,48 @@
    *  9. 晶胞采样
    * ================================================================== */
 
-  /** 均匀网格（取每个小格中心，避免落在胞壁上）→ 分数坐标 Float64Array */
+  /**
+   * 均匀网格（取格点 i/n）→ 分数坐标 Float64Array。
+   * 取格点而不是小格中心，是为了让整数旋转矩阵把网格映到自身；
+   * 带心 / 螺旋 / 滑移的分数平移还需要把 n 对齐到 translationDenom() 的倍数，
+   * 这样整个轨道的等价点都会落在采样网格里（点击高亮才会完整）。
+   */
   function sampleGrid(n) {
     var count = n * n * n;
     var out = new Float64Array(count * 3);
     var p = 0;
     for (var i = 0; i < n; i++) {
-      var x = (i + 0.5) / n;
+      var x = i / n;
       for (var j = 0; j < n; j++) {
-        var y = (j + 0.5) / n;
+        var y = j / n;
         for (var k = 0; k < n; k++) {
-          out[p++] = x; out[p++] = y; out[p++] = (k + 0.5) / n;
+          out[p++] = x; out[p++] = y; out[p++] = k / n;
         }
       }
     }
     return out;
+  }
+
+  /**
+   * 让采样网格在全部操作下保持不变的「最小 n 倍数」。
+   * 只取决于分数平移 t：t = k/12 的最简分母的 lcm。
+   * 无分数平移（P 带心、点群 1/2/m/mmm/4/mmm/m-3m…）时返回 1。
+   */
+  function translationDenom(prep) {
+    function gcd(a, b) { while (b) { var r = a % b; a = b; b = r; } return a; }
+    var m = 1;
+    var f = prep.flat, n = prep.count;
+    for (var i = 0; i < n; i++) {
+      var o = i * 12;
+      for (var k = 0; k < 3; k++) {
+        var kk = Math.round(f[o + 9 + k] * 12) % 12;
+        if (kk < 0) kk += 12;
+        if (kk === 0) continue;
+        var den = 12 / gcd(kk, 12);
+        m = m / gcd(m, den) * den;
+      }
+    }
+    return m;
   }
 
   /** 伪随机均匀采样（确定性，便于复现） */
@@ -775,6 +802,7 @@
     KIND_LABELS: KIND_LABELS,
 
     sampleGrid: sampleGrid,
+    translationDenom: translationDenom,
     sampleRandom: sampleRandom
   };
 });

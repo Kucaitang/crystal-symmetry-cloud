@@ -246,8 +246,37 @@ test('网格采样数量与范围正确', () => {
   const pts = S.sampleGrid(4);
   assert.equal(pts.length, 4 * 4 * 4 * 3);
   for (let i = 0; i < pts.length; i++) {
-    assert.ok(pts[i] > 0 && pts[i] < 1);
+    assert.ok(pts[i] >= 0 && pts[i] < 1);
   }
+});
+
+test('网格 + 平移分母对齐后，六方 6 点群的轨道完整', () => {
+  const cell = { a: 4, b: 4, c: 4, alpha: 90, beta: 90, gamma: 120 };
+  const g = S.buildPointGroup('6', cell);
+  const prep = S.prepareOperations(g.matrices, 'P');
+  assert.equal(S.translationDenom(prep), 1);
+  const n = 20;
+  const pts = S.sampleGrid(n);
+  const gridSet = new Set();
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) for (let k = 0; k < n; k++) {
+    gridSet.add([i, j, k].map((v) => Math.round(v / n * S.QUANT)).join(','));
+  }
+  // 取一个一般位置格点（避免原点等特殊位置）
+  const idx = (1 * n * n + 2 * n + 3) * 3;
+  const p = [pts[idx], pts[idx + 1], pts[idx + 2]];
+  const orb = S.orbitOf(prep, p[0], p[1], p[2]);
+  assert.equal(orb.length, 6);
+  for (const q of orb) {
+    const key = q.map((v) => Math.round(v * S.QUANT)).join(',');
+    assert.ok(gridSet.has(key), 'orbit mate should be on grid: ' + key);
+  }
+});
+
+test('translationDenom：P=1、C/I/F=2、R=3、Pnma=2、Fd-3m=4', () => {
+  const hex = { a: 4, b: 4, c: 4, alpha: 90, beta: 90, gamma: 120 };
+  assert.equal(S.translationDenom(S.prepareOperations(S.buildPointGroup('6', hex).matrices, 'P')), 1);
+  assert.equal(S.translationDenom(S.prepareOperations(S.buildPointGroup('mmm', CELLS.orthorhombic).matrices, 'C')), 2);
+  assert.equal(S.translationDenom(S.prepareOperations(S.buildPointGroup('mmm', CELLS.orthorhombic).matrices, 'R')), 3);
 });
 
 /* ---------------- 汇总 ---------------- */

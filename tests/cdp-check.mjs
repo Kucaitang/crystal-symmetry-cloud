@@ -161,7 +161,7 @@ async function main() {
   check('立方预设点群 = m-3m', (await ev("document.getElementById('stat-group').textContent")) === 'm-3m');
   check('m-3m 操作数 = 48', (await ev("document.getElementById('stat-ops').textContent")).startsWith('48 个'));
   const cubeOrbits = await ev("+document.getElementById('stat-orbits').textContent");
-  check('m-3m 轨道数在合理范围（400~520）', cubeOrbits > 400 && cubeOrbits < 520, '实际 ' + cubeOrbits);
+  check('m-3m 轨道数在合理范围（520~620）', cubeOrbits > 520 && cubeOrbits < 620, '实际 ' + cubeOrbits);
   check('平均轨道大小 ≈ 48 或更小', (await ev("+document.getElementById('stat-avg').textContent")) <= 48);
 
   /* ---- 2b. 三维色码性质 ---- */
@@ -285,6 +285,48 @@ async function main() {
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await sleep(300);
     check('按 Esc 取消高亮', (await ev("document.getElementById('selection').style.display")) === 'none');
+  }
+
+  /* ---- 8b. 六方 6 点群：等效点完整（回归） ---- */
+  await navigate(BASE + '?autorot=0&pg=6&a=4&b=4&c=4&ga=120&n=20&theta=-0.72&phi=0.34&dist=3.2');
+  await sleep(400);
+  const hex6 = await ev(`(function () {
+    var S = window.CrystalSym;
+    var prep = window.__crystalDebug.getPrep();
+    var pts = S.sampleGrid(20);
+    var seen = {};
+    for (var i = 0; i < pts.length; i += 3) {
+      var q = S.canonicalize(prep, pts[i], pts[i + 1], pts[i + 2]);
+      var k = q.join('/');
+      if (!(k in seen)) seen[k] = { count: 0, idx: i / 3 };
+      seen[k].count++;
+    }
+    var sizes = {};
+    for (var kk in seen) sizes[seen[kk].count] = (sizes[seen[kk].count] || 0) + 1;
+    var idx = -1;
+    for (var k2 in seen) {
+      if (seen[k2].count === 6) {
+        var pr = window.__crystalDebug.projectPoint(seen[k2].idx);
+        if (pr && pr.visible) { idx = seen[k2].idx; break; }
+      }
+    }
+    return { sizes: sizes, idx: idx };
+  })()`);
+  check('六方 6 点群：存在轨道大小为 6 的采样点', hex6 && hex6.sizes['6'] > 0,
+    JSON.stringify(hex6 && hex6.sizes));
+  if (hex6 && hex6.idx >= 0) {
+    const hp = await ev('window.__crystalDebug.projectPoint(' + hex6.idx + ')');
+    if (hp && hp.visible) {
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: hp.x, y: hp.y });
+      await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: hp.x, y: hp.y, button: 'left', clickCount: 1 });
+      await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: hp.x, y: hp.y, button: 'left', clickCount: 1 });
+      await sleep(500);
+      const hexSel = await ev("document.getElementById('selection').textContent");
+      check('六方 6 点群：点击后高亮 6 个等效点', /轨道大小 6/.test(hexSel), hexSel);
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+      await sleep(200);
+    }
   }
 
   /* ---- 9. 空间群模式 ---- */

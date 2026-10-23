@@ -413,6 +413,39 @@
     }
   }
 
+  /**
+   * 随机种子点 → 每个种子点的完整轨道（去重）。
+   * 随机点本身通常不会恰好包含全部对称像，补全后点击高亮才会显示完整轨道。
+   */
+  function expandRandomOrbits(prep, seeds) {
+    var f = prep.flat, cnt = prep.count, Q = S.QUANT;
+    var seenOrb = Object.create(null), seenPt = Object.create(null);
+    var out = [];
+    for (var i = 0; i < seeds.length; i += 3) {
+      var sx = seeds[i], sy = seeds[i + 1], sz = seeds[i + 2];
+      var q = S.canonicalize(prep, sx, sy, sz);
+      var okey = q[0] + '/' + q[1] + '/' + q[2];
+      if (seenOrb[okey]) continue;
+      seenOrb[okey] = true;
+      for (var j = 0; j < cnt; j++) {
+        var o = j * 12;
+        var x = f[o] * sx + f[o + 1] * sy + f[o + 2] * sz + f[o + 9];
+        var y = f[o + 3] * sx + f[o + 4] * sy + f[o + 5] * sz + f[o + 10];
+        var z = f[o + 6] * sx + f[o + 7] * sy + f[o + 8] * sz + f[o + 11];
+        x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+        var kx = Math.round(x * Q) % Q, ky = Math.round(y * Q) % Q, kz = Math.round(z * Q) % Q;
+        if (kx < 0) kx += Q;
+        if (ky < 0) ky += Q;
+        if (kz < 0) kz += Q;
+        var pkey = kx + '/' + ky + '/' + kz;
+        if (seenPt[pkey]) continue;
+        seenPt[pkey] = true;
+        out.push(x, y, z);
+      }
+    }
+    return Float64Array.from(out);
+  }
+
   /* ================================================================
    *  主计算流程
    * ================================================================ */
@@ -522,8 +555,22 @@
     var pointOrbit = null;                 // 每个采样点的轨道 id
 
     var frac = null;
-    if (state.sampleMode === 'grid') frac = S.sampleGrid(n);
-    else if (state.sampleMode === 'random') frac = S.sampleRandom(n * n * n, 20241016);
+    var gridInfo = null;
+    if (state.sampleMode === 'grid') {
+      // 整数旋转把格点映到格点；分数平移要求 n 是其分母的倍数，否则轨道会被采样网格截断
+      var gridMul = S.translationDenom(prep);
+      var nSnap = Math.max(2, Math.ceil(n / gridMul) * gridMul);
+      if (nSnap !== n) gridInfo = { mul: gridMul, n: nSnap };
+      n = nSnap;
+      frac = S.sampleGrid(n);
+      if (gridInfo) {
+        el.sampleHint.textContent = '在晶胞内取 ' + Math.pow(n, 3) + ' 个均匀格点（为完整轨道，密度自动对齐到 ' +
+          n + '³，平移分母 ' + gridMul + '）。';
+      }
+    } else if (state.sampleMode === 'random') {
+      // 随机点会补全每个种子点的整个轨道
+      frac = expandRandomOrbits(prep, S.sampleRandom(n * n * n, 20241016));
+    }
 
     var colorMode = state.colorMode;
     var canonBounds = canonicalBounds(groupKey, prep);
@@ -868,9 +915,11 @@
     if (isCustom) {
       el.sampleHint.textContent = '输入若干分数坐标（每行 x y z）；每个种子点按当前对称群展开成轨道，同一轨道的点同色。';
     } else if (state.sampleMode === 'random') {
-      el.sampleHint.textContent = '在晶胞内随机取 ' + Math.pow(state.resolution, 3) + ' 个点，适合观察轨道大小的统计分布。';
+      el.sampleHint.textContent = '在晶胞内随机取 ' + Math.pow(state.resolution, 3) +
+        ' 个种子点，并把每个种子点的完整轨道补全（去重）；点击任意点即可看到完整等效点。';
     } else {
-      el.sampleHint.textContent = '在晶胞内取 ' + Math.pow(state.resolution, 3) + ' 个均匀网格点（取小格中心），逐点求轨道。';
+      el.sampleHint.textContent = '在晶胞内取 ' + Math.pow(state.resolution, 3) +
+        ' 个均匀格点；带心 / 滑移 / 螺旋的群会把密度对齐到所需倍数，保证等效点完整。';
     }
   }
 
@@ -1194,16 +1243,22 @@
       var rect = canvas.getBoundingClientRect();
       return { x: rect.left + pr.x, y: rect.top + pr.y };
     },
-    /** 找一个靠近画面中心、可见的采样点（测试用） */
+    /** 找一个靠近画面中心、可见且轨道大小 > 1 的采样点（测试用） */
     pickCenterPoint: function () {
       if (!lastPoints) return null;
       var rect = canvas.getBoundingClientRect();
       var cx = canvas.clientWidth / 2;
       var cy = canvas.clientHeight / 2;
+      var counts = Object.create(null);
+      for (var q = 0; q < lastPoints.count; q++) {
+        var oid0 = lastPoints.orbitIds[q];
+        counts[oid0] = (counts[oid0] || 0) + 1;
+      }
       var best = -1;
       var bestPr = null;
       var bestD = Infinity;
       for (var i = 0; i < lastPoints.count; i++) {
+        if (counts[lastPoints.orbitIds[i]] <= 1) continue;
         var pr = renderer.project([
           lastPoints.positions[i * 3],
           lastPoints.positions[i * 3 + 1],
