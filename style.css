@@ -187,6 +187,38 @@ textarea {
   margin-bottom: 9px;
 }
 
+.coord-grid {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+
+.coord-grid label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10.5px;
+  color: var(--muted, #8f9fc4);
+}
+
+.coord-grid input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 11.5px;
+  color: #dfe8ff;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+}
+
+.coord-grid input:focus {
+  outline: none;
+  border-color: rgba(122, 162, 255, 0.55);
+}
+
 .mode-toggle {
   display: flex;
   gap: 4px;

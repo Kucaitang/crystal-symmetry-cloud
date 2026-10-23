@@ -330,6 +330,56 @@ async function main() {
     }
   }
 
+  /* ---- 8c. 按坐标选取等价点 ---- */
+  await navigate(BASE + '?autorot=0&theta=-0.72&phi=0.34&dist=3.1&pg=m-3m&a=5&b=5&c=5&n=26');
+  await sleep(300);
+  async function coordSelect(x, y, z) {
+    await ev("(function(){var a=document.getElementById('sel-x'), b=document.getElementById('sel-y'), c=document.getElementById('sel-z');" +
+      "a.value='" + x + "'; b.value='" + y + "'; c.value='" + z + "'; return 1;})()");
+    await ev("document.getElementById('btn-sel-coord').click(); 1");
+    await sleep(350);
+  }
+  await coordSelect(0.123, 0.234, 0.345);
+  let coordText = await ev("document.getElementById('selection').textContent");
+  check('坐标选取：显示坐标轨道信息', coordText.indexOf('坐标选取') >= 0, coordText);
+  check('坐标选取：一般位置轨道大小 = 48', coordText.indexOf('轨道大小 48') >= 0, coordText);
+  check('坐标选取：高亮发光点数量 = 48',
+    (await ev("window.__crystalDebug.getHighlightCount()")) === 48);
+  check('坐标选取：输入坐标已归一化',
+    (await ev("document.getElementById('sel-x').value")) === '0.123');
+  await screenshot('15-coord-select.png');
+
+  await coordSelect(0, 0, 0);
+  coordText = await ev("document.getElementById('selection').textContent");
+  check('坐标选取：特殊位置轨道大小 = 1', coordText.indexOf('轨道大小 1') >= 0, coordText);
+
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await sleep(300);
+  check('坐标选取：Esc 清除高亮',
+    (await ev("document.getElementById('selection').style.display")) === 'none');
+  check('坐标选取：Esc 后 coordSel 为空',
+    (await ev("window.__crystalDebug.getCoordSelection()")) === null);
+
+  await coordSelect(1.123, 0.234, 0.345);
+  check('坐标选取：超出 1 的输入自动取余',
+    (await ev("document.getElementById('sel-x').value")) === '0.123');
+
+  // 六方 6 点群：输入坐标后应精确高亮 6 个等效点
+  await navigate(BASE + '?autorot=0&pg=6&a=4&b=4&c=4&ga=120&n=20&theta=-0.72&phi=0.34&dist=3.2');
+  await sleep(300);
+  await coordSelect(0.123, 0.234, 0.345);
+  coordText = await ev("document.getElementById('selection').textContent");
+  check('坐标选取：六方 6 点群轨道大小 = 6', coordText.indexOf('轨道大小 6') >= 0, coordText);
+  check('坐标选取：六方 6 点群发光点数量 = 6',
+    (await ev("window.__crystalDebug.getHighlightCount()")) === 6);
+
+  // URL 参数复现
+  await navigate(BASE + '?autorot=0&pg=m-3m&a=5&b=5&c=5&n=26&selx=0.1&sely=0.2&selz=0.3');
+  await sleep(400);
+  check('URL 参数 selx/sely/selz 自动高亮',
+    (await ev("window.__crystalDebug.getHighlightCount()")) === 48);
+
   /* ---- 9. 空间群模式 ---- */
   await navigate(BASE + '?autorot=0&theta=-0.72&phi=0.34&dist=3.1&mode=space&sg=62&a=5&b=6&c=7&n=20');
   check('空间群模式下空间群下拉可见', (await ev("!document.getElementById('sg-field').hidden")) === true);

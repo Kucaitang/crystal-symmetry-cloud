@@ -134,6 +134,20 @@
       </div>
     </section>
 
+    <section id="coord-section">
+      <h2>按坐标选取等价点</h2>
+      <div class="coord-grid">
+        <label>x<input id="sel-x" type="number" step="0.001" value="0.25"></label>
+        <label>y<input id="sel-y" type="number" step="0.001" value="0.25"></label>
+        <label>z<input id="sel-z" type="number" step="0.001" value="0.25"></label>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btn-sel-coord">高亮该坐标轨道</button>
+        <button class="btn" id="btn-sel-clear">清除高亮</button>
+      </div>
+      <div class="hint-line" id="coord-hint">输入分数坐标（自动对 1 取余），按当前对称群展开完整等价点并高亮；比鼠标点选更精确。</div>
+    </section>
+
     <section id="info-section">
       <h2>统计</h2>
       <dl class="stats">

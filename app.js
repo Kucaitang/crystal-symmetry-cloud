@@ -34,7 +34,8 @@
     statHolo: byId('stat-holo'), statPoints: byId('stat-points'),
     statOrbits: byId('stat-orbits'), statAvg: byId('stat-avg'),
     elements: byId('elements'), warnings: byId('warnings'),
-    hud: byId('hud'), labels: byId('labels'), selection: byId('selection')
+    hud: byId('hud'), labels: byId('labels'), selection: byId('selection'),
+    selX: byId('sel-x'), selY: byId('sel-y'), selZ: byId('sel-z'), coordHint: byId('coord-hint')
   };
 
   if (!renderer) {
@@ -61,6 +62,7 @@
     alpha: 1,
     blend: 'solid',
     autoRotate: false,
+    coordSel: null,              // 按坐标选取的分数坐标 {x,y,z}
     showNeighbors: false,
     showSymAxes: false,
     showMirrors: false
@@ -96,6 +98,7 @@
   var lastPoints = null;
   var selectedOrbit = -1;
   var lastGroupInfo = null;
+  var lastHighlightCount = 0;
   var lastPrep = null;
   var lastBounds = null;
 
@@ -712,6 +715,11 @@
       cell: cell, count: count, customInfo: customInfo
     });
     updateHud(group, count, orbitCount);
+
+    // 如果此前用坐标选取过等价点，晶胞/群变化后重新展开
+    if (state.coordSel) {
+      applyCoordSelection(state.coordSel.x, state.coordSel.y, state.coordSel.z);
+    }
   }
 
   /* ================================================================
@@ -1083,6 +1091,24 @@
       syncUI();
       schedule(0);
     });
+    byId('btn-sel-coord').addEventListener('click', function () {
+      var x = parseFloat(el.selX.value);
+      var y = parseFloat(el.selY.value);
+      var z = parseFloat(el.selZ.value);
+      if (!isFinite(x) || !isFinite(y) || !isFinite(z)) {
+        if (el.coordHint) el.coordHint.textContent = '请输入有效的分数坐标（数字）。';
+        return;
+      }
+      if (el.coordHint) {
+        el.coordHint.textContent = '输入分数坐标（自动对 1 取余），按当前对称群展开完整等价点并高亮；比鼠标点选更精确。';
+      }
+      if (!applyCoordSelection(x, y, z)) {
+        if (el.coordHint) el.coordHint.textContent = '点云尚未就绪，请稍后再试。';
+      }
+    });
+    byId('btn-sel-clear').addEventListener('click', function () {
+      clearHighlight();
+    });
     byId('btn-reset').addEventListener('click', function () {
       renderer.resetView();
     });
@@ -1095,6 +1121,78 @@
       a.click();
       document.body.removeChild(a);
     });
+  }
+
+  /* ================================================================
+   *  按分数坐标选取等价点（比鼠标点选精确）
+   * ================================================================ */
+
+  function normFrac(v) {
+    v = v % 1;
+    return v < 0 ? v + 1 : v;
+  }
+
+  function applyCoordSelection(x, y, z) {
+    if (!lastPoints || !lastPrep || !lastB || !lastBounds) return false;
+    x = normFrac(x); y = normFrac(y); z = normFrac(z);
+    var prep = lastPrep;
+    var q = S.canonicalize(prep, x, y, z);
+    var rep = [q[0] / S.QUANT, q[1] / S.QUANT, q[2] / S.QUANT];
+    var orb = S.orbitOf(prep, x, y, z);
+    if (!orb.length) return false;
+
+    var B = lastB;
+    var selPos = new Float32Array(orb.length * 3);
+    var selCol = new Float32Array(orb.length * 3);
+    var colorMode = state.colorMode;
+    var baseCol = null;
+    if (colorMode === 'orbit') baseCol = colorOrbit(q[0], q[1], q[2]);
+    else if (colorMode === 'canon') baseCol = colorFromRep(q[0], q[1], q[2], lastBounds);
+    for (var i = 0; i < orb.length; i++) {
+      var p = orb[i];
+      var col = colorMode === 'pos' ? C.colorCode(p[0], p[1], p[2]) : baseCol;
+      selPos[i * 3] = B[0][0] * p[0] + B[0][1] * p[1] + B[0][2] * p[2];
+      selPos[i * 3 + 1] = B[1][0] * p[0] + B[1][1] * p[1] + B[1][2] * p[2];
+      selPos[i * 3 + 2] = B[2][0] * p[0] + B[2][1] * p[1] + B[2][2] * p[2];
+      selCol[i * 3] = 0.45 + 0.55 * col[0];
+      selCol[i * 3 + 1] = 0.45 + 0.55 * col[1];
+      selCol[i * 3 + 2] = 0.45 + 0.55 * col[2];
+    }
+
+    // 底图整体压暗，只留下坐标轨道的发光点
+    var base = lastPoints.baseColors;
+    var cols = new Float32Array(lastPoints.count * 3);
+    for (var k = 0; k < lastPoints.count; k++) {
+      var o = k * 3;
+      cols[o] = base[o] * 0.10;
+      cols[o + 1] = base[o + 1] * 0.10;
+      cols[o + 2] = base[o + 2] * 0.10;
+    }
+    renderer.setPoints(lastPoints.positions, cols, lastPoints.count);
+    renderer.setHighlightPoints(selPos, selCol, orb.length);
+
+    selectedOrbit = -1;
+    state.coordSel = { x: x, y: y, z: z };
+    lastHighlightCount = orb.length;
+
+    if (el.selX) {
+      el.selX.value = String(Number(x.toFixed(6)));
+      el.selY.value = String(Number(y.toFixed(6)));
+      el.selZ.value = String(Number(z.toFixed(6)));
+    }
+    if (el.selection) {
+      el.selection.style.display = 'block';
+      el.selection.textContent = '坐标选取 · 输入 (' +
+        x.toFixed(3) + ', ' + y.toFixed(3) + ', ' + z.toFixed(3) + ') · 代表点 (' +
+        rep[0].toFixed(3) + ', ' + rep[1].toFixed(3) + ', ' + rep[2].toFixed(3) +
+        ') · 轨道大小 ' + orb.length + ' · 按 Esc 取消';
+    }
+    return true;
+  }
+
+  function clearCoordSelection() {
+    state.coordSel = null;
+    lastHighlightCount = 0;
   }
 
   /* ================================================================
@@ -1148,6 +1246,7 @@
       }
     }
     renderer.setPoints(lastPoints.positions, cols, lastPoints.count);
+    lastHighlightCount = selPos.length / 3;
     if (selPos.length) {
       renderer.setHighlightPoints(
         new Float32Array(selPos),
@@ -1160,12 +1259,14 @@
   }
 
   function highlightOrbit(oid) {
+    clearCoordSelection();
     selectedOrbit = oid;
     paintSelection(oid);
     updateSelectionInfo();
   }
 
   function clearHighlight() {
+    clearCoordSelection();
     selectedOrbit = -1;
     paintSelection(-1);
     updateSelectionInfo();
@@ -1221,6 +1322,9 @@
     getGroup: function () { return lastGroupInfo; },
     getPrep: function () { return lastPrep; },
     getPointCount: function () { return lastPoints ? lastPoints.count : 0; },
+    getHighlightCount: function () { return lastHighlightCount; },
+    getCoordSelection: function () { return state.coordSel; },
+    selectCoord: function (x, y, z) { return applyCoordSelection(x, y, z); },
     getOrbitCount: function () {
       if (!lastPoints) return 0;
       var ids = Object.create(null);
@@ -1324,6 +1428,10 @@
     if (q.get('symaxes') === '1') state.showSymAxes = true;
     if (q.get('mirrors') === '1') state.showMirrors = true;
     if (q.get('custom')) state.customText = q.get('custom');
+    var selx = num('selx'), sely = num('sely'), selz = num('selz');
+    if (selx !== null && sely !== null && selz !== null) {
+      state.coordSel = { x: selx, y: sely, z: selz };
+    }
     var theta = num('theta'), phi = num('phi'), dist = num('dist');
     if (theta !== null) renderer.setCamera({ theta: theta });
     if (phi !== null) renderer.setCamera({ phi: phi });
