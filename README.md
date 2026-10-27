@@ -6,7 +6,10 @@
 
 纯静态网页：双击 `index.html` 即可运行，零依赖、无外链、无需联网。
 
-![P1 / m-3m / 单击高亮](shots/00-compare.png)
+**在线演示**：<https://kucaitang.github.io/crystal-symmetry-cloud/>
+（README 里的截图使用 GitHub Pages 地址，`raw.githubusercontent.com` 被网络屏蔽时也能正常显示。）
+
+![P1 / m-3m / 单击高亮](https://kucaitang.github.io/crystal-symmetry-cloud/shots/00-compare.png)
 
 - 左：点群 `1`（最低对称），每个点都是独立轨道，颜色随位置连续变化。
 - 中：同一个晶胞换成点群 `m-3m`（48 个对称操作），等价点被折叠成同一个颜色。
@@ -34,15 +37,15 @@
 | `Esc` / 双击 | 取消高亮 / 复位视角 |
 | 「导出 PNG」 | 保存当前画面 |
 
-![m-3m 界面](shots/02-cubic-m3m.png)
+![m-3m 界面](https://kucaitang.github.io/crystal-symmetry-cloud/shots/02-cubic-m3m.png)
 
-![单击高亮等价点](shots/11-highlight-orbit.png)
+![单击高亮等价点](https://kucaitang.github.io/crystal-symmetry-cloud/shots/11-highlight-orbit.png)
 
-![空间群模式（Pnma）](shots/12-spacegroup-pnma.png)
+![空间群模式（Pnma）](https://kucaitang.github.io/crystal-symmetry-cloud/shots/12-spacegroup-pnma.png)
 
-![六方 6 点群：点击后高亮 6 个等效点](shots/14-hex6-highlight.png)
+![六方 6 点群：点击后高亮 6 个等效点](https://kucaitang.github.io/crystal-symmetry-cloud/shots/14-hex6-highlight.png)
 
-![按分数坐标精确选取等价点](shots/15-coord-select.png)
+![按分数坐标精确选取等价点](https://kucaitang.github.io/crystal-symmetry-cloud/shots/15-coord-select.png)
 
 ---
 
